@@ -73,8 +73,9 @@ const inferGuided = (title: string, category: string): boolean => {
   return combined.includes('guided') || combined.includes('guide')
 }
 
-const inferPrivate = (title: string): boolean => {
-  return title.toLowerCase().includes('private')
+const inferPrivate = (title: string, category: string, description?: string): boolean => {
+  const combined = `${title} ${category} ${description || ''}`.toLowerCase()
+  return combined.includes('private')
 }
 
 const enrichProducts = (prods: Product[]): EnrichedProduct[] => {
@@ -82,7 +83,7 @@ const enrichProducts = (prods: Product[]): EnrichedProduct[] => {
     ...p,
     cities: inferCities(p.title),
     isGuided: inferGuided(p.title, p.category),
-    isPrivate: inferPrivate(p.title),
+    isPrivate: inferPrivate(p.title, p.category, p.description),
   }))
 }
 
@@ -117,11 +118,14 @@ function App() {
       const cityMatch =
         selectedCities.size === 0 || product.cities.some((city) => selectedCities.has(city))
 
-      const typeMatch =
-        selectedTypes.size === 0 ||
-        selectedTypes.has('Guided' as any) === product.isGuided ||
-        selectedTypes.has('Not Guided' as any) === !product.isGuided ||
-        (selectedTypes.has('Private' as any) && product.isPrivate)
+      // Type filter: when types are selected, product must match at least one selected type
+      let typeMatch = true
+      if (selectedTypes.size > 0) {
+        typeMatch = false
+        if (selectedTypes.has('Private') && product.isPrivate) typeMatch = true
+        if (selectedTypes.has('Guided') && product.isGuided) typeMatch = true
+        if (selectedTypes.has('Not Guided') && !product.isGuided) typeMatch = true
+      }
 
       return cityMatch && typeMatch
     })
