@@ -29,11 +29,43 @@ type EnrichedProduct = Product & {
 
 const parsedProducts = products as Product[]
 
-const CITIES = ['Tangier', 'Chefchaouen', 'Asilah', 'Tetouan', 'Akchour', 'Cap Spartel', 'Rabat', 'Larache', 'Fes']
+const CITY_ALIASES = [
+  { primary: 'Chefchaouen', aliases: ['chefchaouen', 'chaouen'] },
+  { primary: 'Asilah', aliases: ['asilah', 'assilah'] },
+  { primary: 'Tangier', aliases: ['tangier', 'tanger'] },
+  { primary: 'Tetouan', aliases: ['tetouan', 'tétouan'] },
+  { primary: 'Akchour', aliases: ['akchour'] },
+  { primary: 'Cap Spartel', aliases: ['cap spartel', 'spartel'] },
+  { primary: 'Fes', aliases: ['fes', 'fez'] },
+  { primary: 'Larache', aliases: ['larache'] },
+  { primary: 'Rabat', aliases: ['rabat'] },
+] as const
+
+// Ensure filter bar displays these standard primary names in this order
+const ALL_CITIES = [
+  'Akchour',
+  'Asilah',
+  'Cap Spartel',
+  'Chefchaouen',
+  'Fes',
+  'Larache',
+  'Rabat',
+  'Tangier',
+  'Tetouan',
+]
+
+const normalizeText = (value: string): string =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 
 const inferCities = (title: string): string[] => {
-  const titleLower = title.toLowerCase()
-  return CITIES.filter((city) => titleLower.includes(city.toLowerCase()))
+  const normalizedTitle = normalizeText(title)
+
+  return CITY_ALIASES.filter(({ aliases }) =>
+    aliases.some((alias) => normalizedTitle.includes(normalizeText(alias)))
+  ).map(({ primary }) => primary)
 }
 
 const inferGuided = (title: string, category: string): boolean => {
@@ -160,10 +192,12 @@ function App() {
     },
   ]
 
-  // Get unique cities from all products
-  const allCities = Array.from(
-    new Set(enrichedProducts.flatMap((p) => p.cities))
-  ).sort()
+  // Get unique cities from all products, but show the full known list in filter UI
+  const detected = Array.from(new Set(enrichedProducts.flatMap((p) => p.cities)))
+  // Keep the canonical ordering from ALL_CITIES, then append any detected extras
+  const allCities = ALL_CITIES.filter((c) => detected.includes(c)).concat(
+    detected.filter((c) => !ALL_CITIES.includes(c)).sort()
+  )
 
   // Accessibility: focus management and keyboard handling for modal
   const modalRef = useRef<HTMLDivElement | null>(null)
